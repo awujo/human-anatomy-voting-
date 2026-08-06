@@ -1,0 +1,38 @@
+body {
+  background-color: #f7f8fa;
+}
+
+.candidate-photo {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #dee2e6;
+}
+
+.candidate-card {
+  cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+.candidate-card:hover {
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, .25);
+}
+
+.candidate-card input[type="radio"]:checked + label .candidate-card-inner,
+.candidate-card.selected {
+  border-color: #0d6efd !important;
+  box-shadow: 0 0 0 2px rgba(13, 110, 253, .4);
+}
+
+.results-bar {
+  height: 28px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #0d6efd, #66a3ff);
+}
+
+.pin-code {
+  font-family: monospace;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
