@@ -7,7 +7,7 @@
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'u355928399_humananatomy');
 define('DB_USER', 'u355928399_humananatomy');
-define('DB_PASS', 'CHANGE_ME');
+define('DB_PASS', 'ChangeMe@2026');
 
 // Base URL of the site (no trailing slash), used to build links/redirects.
 // Example: 'https://yourdomain.com' or 'https://yourdomain.com/voting'
