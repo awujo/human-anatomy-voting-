@@ -11,14 +11,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf();
 
     $matricNo = trim($_POST['matric_no'] ?? '');
-    $pin      = trim($_POST['pin'] ?? '');
 
     $stmt = $pdo->prepare('SELECT * FROM voters WHERE matric_no = ? LIMIT 1');
     $stmt->execute([$matricNo]);
     $voter = $stmt->fetch();
 
-    if (!$voter || !$voter['pin_hash'] || !password_verify($pin, $voter['pin_hash'])) {
-        flash_set('error', 'Invalid matric number or PIN.');
+    if (!$voter) {
+        flash_set('error', 'That matric number is not registered to vote. Contact the election admin.');
         redirect(BASE_URL . '/vote/login.php');
     }
 
@@ -43,16 +42,12 @@ require __DIR__ . '/../includes/site_header.php';
     <div class="card shadow-sm">
       <div class="card-body p-4">
         <h4 class="mb-3">Voter Login</h4>
-        <p class="text-muted">Log in with your matric number and the PIN given to you by the election committee.</p>
+        <p class="text-muted">Enter your matric number to vote.</p>
         <form method="post">
           <?php echo csrf_field(); ?>
           <div class="mb-3">
             <label class="form-label">Matric Number</label>
             <input type="text" name="matric_no" class="form-control" placeholder="e.g. 22/0313" required autofocus>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">PIN</label>
-            <input type="password" name="pin" class="form-control" required>
           </div>
           <button type="submit" class="btn btn-primary w-100">Log In &amp; Vote</button>
         </form>

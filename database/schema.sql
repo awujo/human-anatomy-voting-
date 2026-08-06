@@ -76,7 +76,6 @@ CREATE TABLE IF NOT EXISTS voters (
   level         VARCHAR(10)  NULL,
   email         VARCHAR(100) NULL,
   phone         VARCHAR(20)  NULL,
-  pin_hash      VARCHAR(255) NULL,                -- optional extra PIN/password, hashed
   status        ENUM('eligible','blocked') NOT NULL DEFAULT 'eligible',
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

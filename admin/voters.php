@@ -21,15 +21,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($matricNo === '' || $fullName === '') {
             flash_set('error', 'Matric number and full name are required.');
         } else {
-            $pin = generate_pin();
             try {
                 $stmt = $pdo->prepare(
-                    'INSERT INTO voters (matric_no, full_name, department, level, email, phone, pin_hash)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                    'INSERT INTO voters (matric_no, full_name, department, level, email, phone)
+                     VALUES (?, ?, ?, ?, ?, ?)'
                 );
-                $stmt->execute([$matricNo, $fullName, $department, $level, $email, $phone, password_hash($pin, PASSWORD_BCRYPT)]);
+                $stmt->execute([$matricNo, $fullName, $department, $level, $email, $phone]);
                 log_admin_activity($pdo, $_SESSION['admin_id'], 'add_voter', $matricNo);
-                flash_set('success', "Voter {$matricNo} added. PIN: {$pin} — record this now, it will not be shown again.");
+                flash_set('success', "Voter {$matricNo} added.");
             } catch (PDOException $e) {
                 flash_set('error', 'Could not add voter (matric number may already exist).');
             }
@@ -43,18 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([$id]);
         log_admin_activity($pdo, $_SESSION['admin_id'], 'toggle_voter_status', 'voter #' . $id);
         flash_set('success', 'Voter status updated.');
-        redirect(BASE_URL . '/admin/voters.php');
-    }
-
-    if ($action === 'reset_pin') {
-        $id  = (int) ($_POST['id'] ?? 0);
-        $pin = generate_pin();
-        $stmt = $pdo->prepare('UPDATE voters SET pin_hash = ? WHERE id = ?');
-        $stmt->execute([password_hash($pin, PASSWORD_BCRYPT), $id]);
-        $matric = $pdo->prepare('SELECT matric_no FROM voters WHERE id = ?');
-        $matric->execute([$id]);
-        log_admin_activity($pdo, $_SESSION['admin_id'], 'reset_voter_pin', 'voter #' . $id);
-        flash_set('success', 'New PIN for ' . $matric->fetchColumn() . ": {$pin} — record this now, it will not be shown again.");
         redirect(BASE_URL . '/admin/voters.php');
     }
 
@@ -91,21 +78,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            $pin = generate_pin();
             try {
                 $stmt = $pdo->prepare(
-                    'INSERT INTO voters (matric_no, full_name, department, level, pin_hash) VALUES (?, ?, ?, ?, ?)'
+                    'INSERT INTO voters (matric_no, full_name, department, level) VALUES (?, ?, ?, ?)'
                 );
-                $stmt->execute([$matricNo, $fullName, $department, $level, password_hash($pin, PASSWORD_BCRYPT)]);
-                $importResults[] = ['matric_no' => $matricNo, 'full_name' => $fullName, 'pin' => $pin, 'status' => 'added'];
+                $stmt->execute([$matricNo, $fullName, $department, $level]);
+                $importResults[] = ['matric_no' => $matricNo, 'full_name' => $fullName, 'status' => 'added'];
             } catch (PDOException $e) {
-                $importResults[] = ['matric_no' => $matricNo, 'full_name' => $fullName, 'pin' => '-', 'status' => 'skipped (duplicate)'];
+                $importResults[] = ['matric_no' => $matricNo, 'full_name' => $fullName, 'status' => 'skipped (duplicate)'];
             }
         }
         fclose($handle);
 
+        $addedCount = count(array_filter($importResults, fn($r) => $r['status'] === 'added'));
         log_admin_activity($pdo, $_SESSION['admin_id'], 'import_voters', count($importResults) . ' rows processed');
-        flash_set('success', 'Import finished. PINs are shown below — record them now, they will not be shown again.');
+        flash_set('success', "Import finished: {$addedCount} voter(s) added.");
     }
 }
 
@@ -116,6 +103,10 @@ require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h3 class="mb-3">Voters</h3>
+<p class="text-muted">
+  Students vote by entering their matric number only &mdash; there is no PIN. Only matric numbers you register
+  here can log in and vote, so make sure this list is accurate before the election opens.
+</p>
 
 <div class="row g-3 mb-4">
   <div class="col-md-6">
@@ -131,7 +122,7 @@ require __DIR__ . '/../includes/admin_header.php';
           <div class="col-6"><input type="text" name="level" class="form-control" placeholder="Level e.g. 200L"></div>
           <div class="col-6"><input type="email" name="email" class="form-control" placeholder="Email (optional)"></div>
           <div class="col-6"><input type="text" name="phone" class="form-control" placeholder="Phone (optional)"></div>
-          <div class="col-12"><button class="btn btn-primary" type="submit">Add Voter &amp; Generate PIN</button></div>
+          <div class="col-12"><button class="btn btn-primary" type="submit">Add Voter</button></div>
         </form>
       </div>
     </div>
@@ -154,17 +145,16 @@ require __DIR__ . '/../includes/admin_header.php';
 </div>
 
 <?php if ($importResults): ?>
-<div class="card mb-4 border-warning">
-  <div class="card-header bg-warning-subtle">Import results — save these PINs now</div>
+<div class="card mb-4">
+  <div class="card-header">Import results</div>
   <div class="card-body p-0">
     <table class="table mb-0">
-      <thead><tr><th>Matric No</th><th>Name</th><th>PIN</th><th>Status</th></tr></thead>
+      <thead><tr><th>Matric No</th><th>Name</th><th>Status</th></tr></thead>
       <tbody>
         <?php foreach ($importResults as $r): ?>
           <tr>
             <td><?php echo h($r['matric_no']); ?></td>
             <td><?php echo h($r['full_name']); ?></td>
-            <td class="pin-code"><?php echo h($r['pin']); ?></td>
             <td><?php echo h($r['status']); ?></td>
           </tr>
         <?php endforeach; ?>
@@ -189,12 +179,6 @@ require __DIR__ . '/../includes/admin_header.php';
             <td><?php echo h($v['level']); ?></td>
             <td><span class="badge bg-<?php echo $v['status'] === 'eligible' ? 'success' : 'secondary'; ?>"><?php echo h($v['status']); ?></span></td>
             <td class="text-end">
-              <form method="post" class="d-inline">
-                <?php echo csrf_field(); ?>
-                <input type="hidden" name="action" value="reset_pin">
-                <input type="hidden" name="id" value="<?php echo (int) $v['id']; ?>">
-                <button class="btn btn-sm btn-outline-secondary" type="submit" onclick="return confirm('Generate a new PIN for this voter?');">Reset PIN</button>
-              </form>
               <form method="post" class="d-inline">
                 <?php echo csrf_field(); ?>
                 <input type="hidden" name="action" value="toggle_status">
